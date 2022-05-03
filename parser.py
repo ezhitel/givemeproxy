@@ -1,2 +1,2 @@
 class Parse:
-    pass
+    pass ssssss

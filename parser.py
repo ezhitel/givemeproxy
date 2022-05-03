@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-import lxml
+
 
 class Parse:
     def free_proxy_list_net():

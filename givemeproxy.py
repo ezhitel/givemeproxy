@@ -8,7 +8,6 @@ class GiveMeProxy(Main):
                  country: str = 'all',
                  anonymity: str = 'any',
                  refresh_time: int = 10,
-                 proxy_check: bool = False,
                  ):
 
 

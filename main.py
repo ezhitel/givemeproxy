@@ -3,10 +3,11 @@ from collections import deque
 from parser import Parse
 from db_handler import GiveMeProxy_DB
 import asyncio
+import aiohttp
 parse = Parse()
 db = GiveMeProxy_DB()
 class Main():
-    def __init__(self, proxy_type, country, anonymity, refresh_time, proxy_check):
+    def __init__(self, proxy_type, country, anonymity, refresh_time):
         self.proxy_type = ''
         self.country = ''
         self.anonymity = ''
@@ -16,7 +17,6 @@ class Main():
                          anonymity
                          )
         self.refresh_time = refresh_time
-        self.proxy_check = proxy_check
         self.current_proxy = ''
         self.blocked_list = []
         self.suitable_proxies = deque()
@@ -74,7 +74,8 @@ class Main():
             data = db.get_data(self.proxy_type, self.country, self.anonymity)
             if data:
                 if self.proxy_check:
-                    for i in data:
+                    checked_data = asyncio.run(self.create_proxy_check_tasks(data))
+                    for i in checked_data:
                         if self.is_not_blocked(i):
                             if self.check_proxy(i):
                                 self.suitable_proxies.append(i)
@@ -96,17 +97,24 @@ class Main():
         raise RuntimeError('No suitable proxies found')
 
     async def start_parse(self):
-        await asyncio.gather(parse.free_proxy_list_net(), parse.is_in_progress(), self.insert_to_db())
+        queue = asyncio.Queue()
+        parse_defs_done = asyncio.Queue(maxsize=1)
+        await asyncio.gather(self.insert_to_db(queue, parse_defs_done),
+                             parse.free_proxy_list_net(queue, parse_defs_done),
+                             )
 
 
-    async def insert_to_db(self):
+    async def insert_to_db(self, queue, parse_defs_done):
         await asyncio.sleep(0.1)
-        while parse.parse_in_progress:
+        while not parse_defs_done.full():
             await asyncio.sleep(0.1)
-            while parse.row_queue:
-                data = parse.row_queue.popleft()
-                db.insert(data)
-
+            while not queue.empty():
+            #while parse.row_queue:
+                data = await queue.get()
+                #data = parse.row_queue.popleft()
+                #db.insert(data)
+                print(data)
+        #queue.task_done()
 
     def next_from_queue(self):
         self.current_proxy = self.suitable_proxies.popleft()
@@ -123,13 +131,19 @@ class Main():
             return True
         else:
             return False
+    async def create_proxy_check_tasks(self, ips):
+        tasks = []
+        for i in ips:
+            task = asyncio.create_task(self.proxy_check(i))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
 
-    def check_proxy(self, ip):
+    async def check_proxy(self, ip):
         pass
 
     def refresh(self):
         pass
 
-#main = Main(proxy_type=['any'], country=['all'], anonymity=['any'], refresh_time=10, proxy_check=False)
+main = Main(proxy_type=['any'], country=['all'], anonymity=['any'], refresh_time=10, proxy_check=False)
 
-#asyncio.run(main.start_parse())
+asyncio.run(main.start_parse())

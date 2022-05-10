@@ -1,7 +1,5 @@
 from bs4 import BeautifulSoup
 import aiohttp
-import asyncio
-from collections import deque
 
 
 class Parse:
@@ -27,7 +25,11 @@ class Parse:
                 anon = 'elite'
             else:
                 anon = lst[4]
-            lst_ready = [ip_port, lst[2], anon, lst[-2]]
+            if 'no' in lst[-2]:
+                proto = 'http'
+            else:
+                proto = 'https'
+            lst_ready = [ip_port, lst[2], anon, proto]
             await queue.put(lst_ready)
         await parse_defs_done.put('free_proxy_list_net')
 

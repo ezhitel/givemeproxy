@@ -3,11 +3,10 @@ from collections import deque
 from parser import Parse
 from db_handler import GiveMeProxy_DB
 import asyncio
-import aiohttp
 parse = Parse()
 db = GiveMeProxy_DB()
 class Main():
-    def __init__(self, proxy_type, country, anonymity, refresh_time):
+    def __init__(self, proxy_type, country, anonymity):
         self.proxy_type = ''
         self.country = ''
         self.anonymity = ''
@@ -16,11 +15,11 @@ class Main():
                          country,
                          anonymity
                          )
-        self.refresh_time = refresh_time
         self.current_proxy = ''
+        self.current_proxy_protocol = ''
         self.blocked_list = []
         self.suitable_proxies = deque()
-        #self.append_suitable_proxies()
+        self.append_suitable_proxies()
 
     def check_param(self, proxy_type, country, anonymity):
         proxy_type_list = ['any', 'socks4', 'socks5', 'http', 'https']
@@ -73,26 +72,15 @@ class Main():
         for i in range(2):
             data = db.get_data(self.proxy_type, self.country, self.anonymity)
             if data:
-                if self.proxy_check:
-                    checked_data = asyncio.run(self.create_proxy_check_tasks(data))
-                    for i in checked_data:
-                        if self.is_not_blocked(i):
-                            if self.check_proxy(i):
-                                self.suitable_proxies.append(i)
-                    if self.suitable_proxies:
-                        return True
-                    else:
-                        raise RuntimeError('No suitable proxies found')
+                for x in data:
+                    if self.is_not_blocked(x[0]):
+                        self.suitable_proxies.append(x)
+                if self.suitable_proxies:
+                    return True
                 else:
-                    for i in data:
-                        if self.is_not_blocked(i):
-                            self.suitable_proxies.append(i)
-                    if self.suitable_proxies:
-                        return True
-                    else:
-                        raise RuntimeError('No suitable proxies found')
+                    raise RuntimeError('No suitable proxies found')
             elif i != 1:
-                self.start_parse()
+                asyncio.run(self.start_parse())
 
         raise RuntimeError('No suitable proxies found')
 
@@ -105,45 +93,38 @@ class Main():
 
 
     async def insert_to_db(self, queue, parse_defs_done):
+        #db.drop_table()
         await asyncio.sleep(0.1)
         while not parse_defs_done.full():
             await asyncio.sleep(0.1)
             while not queue.empty():
-            #while parse.row_queue:
                 data = await queue.get()
-                #data = parse.row_queue.popleft()
                 #db.insert(data)
                 print(data)
-        #queue.task_done()
+
 
     def next_from_queue(self):
-        self.current_proxy = self.suitable_proxies.popleft()
-        if self.current_proxy:
-            return self.current_proxy
-        else:
-            self.start_parse()
+        # TODO: Проверить что возвращает очередь если пуста
+        data_from_queue = self.suitable_proxies.popleft()
+        try:
+            self.current_proxy = data_from_queue[0]
+            self.current_proxy_protocol = data_from_queue[1]
+        except:
+            asyncio.run(self.start_parse())
             self.append_suitable_proxies()
-            self.current_proxy = self.suitable_proxies.popleft()
+            data_from_queue = self.suitable_proxies.popleft()
+            self.current_proxy = data_from_queue[0]
+            self.current_proxy_protocol = data_from_queue[1]
+        finally:
             return self.current_proxy
+
 
     def is_not_blocked(self, ip):
         if ip not in self.blocked_list:
             return True
         else:
             return False
-    async def create_proxy_check_tasks(self, ips):
-        tasks = []
-        for i in ips:
-            task = asyncio.create_task(self.proxy_check(i))
-            tasks.append(task)
-        await asyncio.gather(*tasks)
 
-    async def check_proxy(self, ip):
-        pass
-
-    def refresh(self):
-        pass
-
-main = Main(proxy_type=['any'], country=['all'], anonymity=['any'], refresh_time=10, proxy_check=False)
+main = Main(proxy_type=['any'], country=['all'], anonymity=['any'], refresh_time=10)
 
 asyncio.run(main.start_parse())

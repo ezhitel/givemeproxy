@@ -104,7 +104,7 @@ class Main():
 
 
     def next_from_queue(self):
-        # TODO: Проверить что возвращает очередь если пуста
+
         data_from_queue = self.suitable_proxies.popleft()
         try:
             self.current_proxy = data_from_queue[0]

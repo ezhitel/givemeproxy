@@ -43,27 +43,27 @@ class Main():
         anonymity_list = ['any', 'elite', 'anon', 'transparent']
 
         # Check proxy_type value
-        for i in proxy_type:
+        for i in proxy_type.split(','):
             if i in proxy_type_list:
-                break
+                continue
             else:
                 raise ValueError(
                     'Incorrect proxy_type value specified. Use: "any", "socks4", "socks5", "http", "https".')
         self.proxy_type = proxy_type
 
         # Check country value
-        for i in country:
+        for i in country.split(','):
             if i in coutry_code_list:
-                break
+                continue
             else:
                 raise ValueError('Incorrect country value specified. Use ISO 3166-1 alpha-2 codes.')
         self.country = country
 
 
         # Check anonymity value
-        for i in anonymity:
+        for i in anonymity.split(','):
             if i in anonymity_list:
-                break
+                continue
             else:
                 raise ValueError('Incorrect anonymity value specified. Use: "any", "elite", "anon", "transparent".')
         self.anonymity = anonymity
@@ -104,19 +104,17 @@ class Main():
 
 
     def next_from_queue(self):
-
-        data_from_queue = self.suitable_proxies.popleft()
-        try:
+        if len(self.suitable_proxies) > 0:
+            data_from_queue = self.suitable_proxies.popleft()
             self.current_proxy = data_from_queue[0]
             self.current_proxy_protocol = data_from_queue[1]
-        except:
+        else:
             asyncio.run(self.start_parse())
             self.append_suitable_proxies()
             data_from_queue = self.suitable_proxies.popleft()
             self.current_proxy = data_from_queue[0]
             self.current_proxy_protocol = data_from_queue[1]
-        finally:
-            return self.current_proxy
+        return self.current_proxy
 
 
     def is_not_blocked(self, ip):

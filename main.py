@@ -1,10 +1,12 @@
 from collections import deque
-
 from parser import Parse
 from db_handler import GiveMeProxy_DB
 import asyncio
+
 parse = Parse()
 db = GiveMeProxy_DB()
+
+
 class Main():
     def __init__(self, proxy_type, country, anonymity):
         self.proxy_type = ''
@@ -59,7 +61,6 @@ class Main():
                 raise ValueError('Incorrect country value specified. Use ISO 3166-1 alpha-2 codes.')
         self.country = country
 
-
         # Check anonymity value
         for i in anonymity.split(','):
             if i in anonymity_list:
@@ -91,17 +92,15 @@ class Main():
                              parse.free_proxy_list_net(queue, parse_defs_done),
                              )
 
-
     async def insert_to_db(self, queue, parse_defs_done):
-        #db.drop_table()
+        # db.drop_table()
         await asyncio.sleep(0.1)
         while not parse_defs_done.full():
             await asyncio.sleep(0.1)
             while not queue.empty():
                 data = await queue.get()
-                #db.insert(data)
+                # db.insert(data)
                 print(data)
-
 
     def next_from_queue(self):
         if len(self.suitable_proxies) > 0:
@@ -116,12 +115,12 @@ class Main():
             self.current_proxy_protocol = data_from_queue[1]
         return self.current_proxy
 
-
     def is_not_blocked(self, ip):
         if ip not in self.blocked_list:
             return True
         else:
             return False
+
 
 main = Main(proxy_type=['any'], country=['all'], anonymity=['any'], refresh_time=10)
 
